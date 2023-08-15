@@ -3,7 +3,12 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import mean_squared_error
 from torch.utils.data import Dataset, DataLoader
+from tqdm import tqdm
 from math import sqrt
+import matplotlib.pyplot as plt
+import seaborn as sns
+import tkinter as tk
+from tkinter import ttk
 
 # Model definition (has to match the one from training)
 class MatrixFactorization(nn.Module):
@@ -57,11 +62,17 @@ test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 true_ratings = []
 predicted_ratings = []
 
+# Add progress bar for prediction
+loop = tqdm(test_loader, total=len(test_loader), leave=True)
 with torch.no_grad():
-    for user_batch, movie_batch, y_batch in test_loader:
+    for user_batch, movie_batch, y_batch in loop:
         y_pred = model(user_batch, movie_batch)
         true_ratings.extend(y_batch.numpy().tolist())
         predicted_ratings.extend(y_pred.numpy().tolist())
+
+        # Update the progress bar
+        loop.set_description("Predicting")
+        loop.set_postfix()
 
 # RMSE calculation
 rmse = sqrt(mean_squared_error(true_ratings, predicted_ratings))
@@ -71,3 +82,39 @@ print(f"Test RMSE: {rmse}")
 accurate_predictions = sum([1 for true, pred in zip(true_ratings, predicted_ratings) if abs(true - pred) < 0.5])
 accuracy = accurate_predictions / len(true_ratings)
 print(f"Accuracy (with a threshold of 0.5): {accuracy * 100:.2f}%")
+
+# Visualization using Seaborn
+plt.figure(figsize=(10,6))
+sns.scatterplot(x=true_ratings, y=predicted_ratings, alpha=0.5)
+plt.title("True Ratings vs. Predicted Ratings")
+plt.xlabel("True Ratings")
+plt.ylabel("Predicted Ratings")
+plt.show()
+
+def show_accuracy(accuracy):
+    # Create the main window
+    root = tk.Tk()
+    root.title("Model Accuracy")
+
+    # Add a label to display a message
+    label = ttk.Label(root, text="Model Accuracy", font=("Helvetica", 24))
+    label.pack(pady=10)
+
+    # Add a label to display the accuracy with bigger font size
+    accuracy_label = ttk.Label(root, text=f"{accuracy * 100:.2f}%", font=("Helvetica", 48))
+    accuracy_label.pack(pady=10)
+
+    # Add a label to explain the accuracy
+    explanation_label = ttk.Label(root, text="This accuracy represents the percentage of predictions where the error is less than 0.5.", wraplength=400)
+    explanation_label.pack(pady=10)
+
+    # Add an exit button
+    exit_button = ttk.Button(root, text="Exit", command=root.quit)
+    exit_button.pack(pady=10)
+
+    # Run the GUI loop
+    root.mainloop()
+
+# You would call this function with the calculated accuracy at the end of your testing code
+accuracy = 0.95 # Example accuracy value
+show_accuracy(accuracy)
